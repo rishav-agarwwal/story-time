@@ -1,13 +1,41 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Chat } from "@google/genai";
 import type { GeminiResponse } from '../types';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable is not set.");
-}
+// =========================================================================
+// === IMPORTANT: SET YOUR API KEY HERE FOR LOCAL DEVELOPMENT ===
+// =========================================================================
+// To run this application, you need a Google AI API key.
+// 1. Visit https://aistudio.google.com/app/apikey to create one.
+// 2. Paste the key into the quotes below.
+//
+// For security, do not commit this file with your API key to a public git repository.
+const API_KEY = "AIzaSyCmeiL7VeNe_eK_MYcjEtbtpBIPxF7NqEA"; // <-- PASTE YOUR GEMINI API KEY HERE
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// In a production app, you should use a more secure method like environment variables.
+// This approach is for making local development and setup easier.
+// =========================================================================
+
+
+// Function to check if the API key is provided.
+export const isApiKeySet = (): boolean => {
+    return !!API_KEY && API_KEY !== "";
+};
+
+let ai: GoogleGenAI | null = null;
+
+// Lazy initialization of the GoogleGenAI instance.
+// This prevents the app from crashing on load if the key is missing.
+function getAiInstance(): GoogleGenAI {
+    if (!isApiKeySet()) {
+        // This should not be reached if the App component checks first, but it's a safeguard.
+        throw new Error("API Key not found. Please set it in services/geminiService.ts");
+    }
+    if (!ai) {
+        ai = new GoogleGenAI({ apiKey: API_KEY });
+    }
+    return ai;
+}
 
 const responseSchema = {
     type: Type.OBJECT,
@@ -32,7 +60,8 @@ const responseSchema = {
 
 export class GeminiService {
     static startChat(genre: string): Chat {
-        return ai.chats.create({
+        const aiInstance = getAiInstance();
+        return aiInstance.chats.create({
             model: 'gemini-2.5-flash',
             config: {
                 systemInstruction: `You are a world-class dungeon master for a dynamic, text-based adventure game.
@@ -74,6 +103,33 @@ export class GeminiService {
             console.error("Error processing AI response:", error);
             // This could be a JSON parsing error or an API error.
             throw new Error("Failed to get a valid story continuation from the AI.");
+        }
+    }
+
+    static async generateBackgroundImage(genre: string): Promise<string> {
+        const aiInstance = getAiInstance();
+        try {
+            const prompt = `A breathtaking, atmospheric, and epic digital painting of a ${genre} world. Dark, moody, and evocative, suitable as a background for a text adventure game. Cinematic lighting, high detail. No text or logos.`;
+            
+            const response = await aiInstance.models.generateImages({
+                model: 'imagen-4.0-generate-001',
+                prompt: prompt,
+                config: {
+                    numberOfImages: 1,
+                    outputMimeType: 'image/jpeg',
+                    aspectRatio: '16:9',
+                },
+            });
+
+            if (response.generatedImages && response.generatedImages.length > 0) {
+                const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+                return `data:image/jpeg;base64,${base64ImageBytes}`;
+            } else {
+                throw new Error("Image generation failed, no images returned.");
+            }
+        } catch (error) {
+            console.error("Error generating background image:", error);
+            throw new Error("Failed to generate a background image for the adventure.");
         }
     }
 }

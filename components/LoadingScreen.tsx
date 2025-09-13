@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 const LoadingSpinner: React.FC = () => (
@@ -8,24 +7,37 @@ const LoadingSpinner: React.FC = () => (
   </svg>
 );
 
-const LoadingScreen: React.FC = () => {
-    const messages = [
+interface LoadingScreenProps {
+    isGeneratingImage?: boolean;
+}
+
+const LoadingScreen: React.FC<LoadingScreenProps> = ({ isGeneratingImage = false }) => {
+    const imageGenMessage = "Forging a new world for your adventure...";
+    const storyMessages = [
         "The storyteller ponders your fate...",
         "Weaving the threads of destiny...",
         "Consulting the ancient scrolls...",
         "The cosmos aligns for your next move...",
         "Generating your reality...",
     ];
-    const [message, setMessage] = React.useState(messages[0]);
+    const [message, setMessage] = React.useState(
+        isGeneratingImage ? imageGenMessage : storyMessages[0]
+    );
 
     React.useEffect(() => {
+        if (isGeneratingImage) {
+            setMessage(imageGenMessage);
+            return; // No interval needed for the static message
+        }
+        
+        // Start cycling through story messages
+        setMessage(storyMessages[Math.floor(Math.random() * storyMessages.length)]);
         const intervalId = setInterval(() => {
-            setMessage(messages[Math.floor(Math.random() * messages.length)]);
+            setMessage(storyMessages[Math.floor(Math.random() * storyMessages.length)]);
         }, 2000);
 
         return () => clearInterval(intervalId);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isGeneratingImage]);
 
 
     return (
